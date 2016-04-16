@@ -1,0 +1,5 @@
+#!/bin/bash
+printf "\n--picosat--\n"
+time picosat < random3SAT/vars-100-10.cnf
+printf "\n--mysat--\n"
+time mysat < random3SAT/vars-100-10.cnf

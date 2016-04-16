@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <vector>
+#include <time.h>
 using namespace std;
 
 #define UNDEF -1
@@ -10,7 +11,7 @@ using namespace std;
 
 uint numVars;
 uint numClauses;
-const uint litsPerClause = 3;
+const uint LITS_PER_CLAUSE = 3;
 vector<vector<int> > clauses;
 vector<int> model;
 vector<int> modelStack;
@@ -21,11 +22,17 @@ uint orderPositionOfNextLit;
 vector<vector<int> > clausesWhereVarIsPos;
 vector<vector<int> > clausesWhereVarIsNeg;
 vector<int> orderByInfluence;  // could be vector<uint>
+vector<uint> recentConflicts;
+uint CONFLICTS_REFRESH_DELAY = 1000;
+uint conflictsSinceLastRefresh = 0;
 // clausesWhereVarIsPos[i] contains
 // the clauses where i appears positively
+
+clock_t tStart;
+
 bool influenceOrderFunction(int a, int b) {
-	// TODO: don't call size(), store the size
-	//		 in the element 0 of the vector
+  // TODO: don't call size(), store the size
+  //     in the element 0 of the vector
   return clausesWhereVarIsPos[a].size()+clausesWhereVarIsNeg[a].size() >
          clausesWhereVarIsPos[b].size()+clausesWhereVarIsNeg[b].size();
 }
@@ -44,6 +51,7 @@ void readClauses( ){
   clausesWhereVarIsPos.resize(numVars+1, vector<int>(0));
   clausesWhereVarIsNeg.resize(numVars+1, vector<int>(0));
   orderByInfluence.resize(numVars+1, 0);
+  recentConflicts.resize(numVars+1, 0);
 
   uint j = 1;
   // Read clauses
@@ -76,13 +84,11 @@ int currentValueInModel(int lit){
   }
 }
 
-
 void setLiteralToTrue(int lit){
   modelStack.push_back(lit);
   if (lit > 0) model[lit] = TRUE;
-  else model[-lit] = FALSE;		
+  else model[-lit] = FALSE;   
 }
-
 
 bool propagateGivesConflict ( ) {
 
@@ -107,7 +113,7 @@ bool propagateGivesConflict ( ) {
       vector<int>* clause = &clauses[(*clausesToPropagate)[i]];
       //cout << "   Present in clause " << clause << ": ";
       
-      for (uint k = 0; not someLitTrue and k < litsPerClause; ++k) {
+      for (uint k = 0; not someLitTrue and k < LITS_PER_CLAUSE; ++k) {
        //cout << clauses[clause][k] << " ";
        int val = currentValueInModel((*clause)[k]);
        if (val == TRUE) someLitTrue = true;
@@ -155,11 +161,11 @@ int getNextDecisionLiteral(){
 void checkmodel(){
   for (int i = 0; i < numClauses; ++i){
     bool someTrue = false;
-    for (int j = 0; not someTrue and j < litsPerClause; ++j)
+    for (int j = 0; not someTrue and j < LITS_PER_CLAUSE; ++j)
       someTrue = (currentValueInModel(clauses[i][j]) == TRUE);
     if (not someTrue) {
       cout << "Error in model, clause is not satisfied:";
-      for (int j = 0; j < litsPerClause; ++j) cout << clauses[i][j] << " ";
+      for (int j = 0; j < LITS_PER_CLAUSE; ++j) cout << clauses[i][j] << " ";
       cout << endl;
       exit(1);
     }
@@ -167,12 +173,21 @@ void checkmodel(){
 }
 
 void printStats() {
-  //cout << "decisions: " << decisions << ", propagations: " << propagations << endl;
+  cout << ". ";
+  double timeSpent = (double) (clock() - tStart)/CLOCKS_PER_SEC;
+  cout << "time: " << timeSpent << endl;
+  cout << "dec: " << decisions 
+        << ",\t prop: " << propagations 
+        << ",\t prop/s: " << propagations/timeSpent << endl;
+
 }
+
 
 int main(){ 
   readClauses(); // reads numVars, numClauses and clauses
   model.resize(numVars+1,UNDEF);
+
+  tStart = clock();
     
   indexOfNextLitToPropagate = 0;  
   orderPositionOfNextLit	= 1;
@@ -183,7 +198,7 @@ int main(){
     if (clauses[i].size() == 1) {
       int lit = clauses[i][0];
       int val = currentValueInModel(lit);
-      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; return 10;}
+      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; printStats(); return 10;}
       else if (val == UNDEF) setLiteralToTrue(lit);
   }
   //for (uint i = 0; i < orderByInfluence.size(); ++i) cout << orderByInfluence[i] << " ";
@@ -191,12 +206,12 @@ int main(){
   // DPLL algorithm
   while (true) {
     while ( propagateGivesConflict() ) {
-      if (decisionLevel == 0) { printStats(); cout << "UNSATISFIABLE" << endl; return 10; }
+      if (decisionLevel == 0) { cout << "UNSATISFIABLE" << endl; printStats(); return 10; }
       backtrack();
     }
     int decisionLit = getNextDecisionLiteral();
     ++decisions;
-    if (decisionLit == 0) { checkmodel(); printStats(); cout << "SATISFIABLE" << endl; return 20; }
+    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" << endl; printStats(); return 20; }
     // start new decision level:
     modelStack.push_back(0);  // push mark indicating new DL
     ++indexOfNextLitToPropagate;
