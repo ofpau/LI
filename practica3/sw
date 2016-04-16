@@ -1,4 +1,4 @@
 #!/bin/bash
 #swipl -O -g main --stand_alone=true -o $1 -c $1.pl
 
-swipl -q --goal=main --toplevel=halt  --stand_alone=true --foreign=save  -o $1 -c $1.pl
+swipl -q --goal=main --toplevel=halt  --stand_alone=true --foreign=save  -o $1.o -c $1.pl
