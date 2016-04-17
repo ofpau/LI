@@ -192,14 +192,17 @@ void backtrack(){
 
 // Heuristic for finding the next decision literal:
 int getNextDecisionLiteral(){
-  for (uint i = 1; i <= numVars+1; ++i) {
-    int l = (int) recentConflictsOrdered[i].first;
+  /*
+  while(orderPositionOfNextLit <= numVars+1) {
+    int l = (int) recentConflictsOrdered[orderPositionOfNextLit++].first;
     if (model[l] == UNDEF) return l;
-  }
+  }*/
   //return orderByInfluence[modelStack.size()+1];
   // returns most influent UNDEF vars, positively
-  for (uint i = orderPositionOfNextLit; i <= numVars+1; ++i) 
-    if (model[orderByInfluence[i]] == UNDEF) return orderByInfluence[i]; 
+  while(orderPositionOfNextLit <= numVars+1) {
+    int nl = orderByInfluence[orderPositionOfNextLit++];
+    if (model[nl] == UNDEF) return nl; 
+  }
   return 0; // reurns 0 when all literals are defined
 }
 
