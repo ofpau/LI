@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <time.h>
+#include <map>
 using namespace std;
 
 #define UNDEF -1
@@ -22,11 +23,15 @@ uint orderPositionOfNextLit;
 vector<vector<int> > clausesWhereVarIsPos;
 vector<vector<int> > clausesWhereVarIsNeg;
 vector<int> orderByInfluence;  // could be vector<uint>
-vector<uint> recentConflicts;
-uint CONFLICTS_REFRESH_DELAY = 1000;
+uint CONFLICTS_REFRESH_DELAY = 10000;
 uint conflictsSinceLastRefresh = 0;
+uint decisionsSinceLastRefresh = 0;
+vector<pair<uint, uint> > recentConflictsOrdered;
+map<uint, uint> litToConflictsVector;
 // clausesWhereVarIsPos[i] contains
 // the clauses where i appears positively
+
+const bool D = false;
 
 clock_t tStart;
 
@@ -51,7 +56,7 @@ void readClauses( ){
   clausesWhereVarIsPos.resize(numVars+1, vector<int>(0));
   clausesWhereVarIsNeg.resize(numVars+1, vector<int>(0));
   orderByInfluence.resize(numVars+1, 0);
-  recentConflicts.resize(numVars+1, 0);
+  recentConflictsOrdered.resize(numVars+1);
 
   uint j = 1;
   // Read clauses
@@ -62,6 +67,8 @@ void readClauses( ){
           // (a bit dirty) way of avoiding a 
           // new loop of numVars iterations.
           orderByInfluence[j] = j;
+          recentConflictsOrdered[j] = make_pair(j, 0);
+          litToConflictsVector[j] = j;
           ++j;
         }
         clauses[i].push_back(lit);
@@ -88,6 +95,34 @@ void setLiteralToTrue(int lit){
   modelStack.push_back(lit);
   if (lit > 0) model[lit] = TRUE;
   else model[-lit] = FALSE;   
+}
+
+void updateRecentConflicts(int lit) {
+  if (decisionsSinceLastRefresh > CONFLICTS_REFRESH_DELAY) {
+    int s = recentConflictsOrdered.size();
+    for (uint i = 0; i < s; ++i) {
+      if (D) cout << recentConflictsOrdered[i].first << " " << recentConflictsOrdered[i].second << ", ";
+      recentConflictsOrdered[i].second /= 2;
+    }
+    //cout << ".done." << endl;
+    conflictsSinceLastRefresh = 0;
+    decisionsSinceLastRefresh = 0;
+  }
+  ++conflictsSinceLastRefresh;
+  uint vecPos = litToConflictsVector[lit];
+  //if (conflictsSinceLastRefresh%128 == 0) cout << "vecPos: " << vecPos << endl;
+  recentConflictsOrdered[vecPos].second += 20;
+  int pre = vecPos-1;
+  while(pre > 0 and recentConflictsOrdered[vecPos].second > recentConflictsOrdered[pre].second) {
+    pre--; // Millor ordena cada cert temps en lloc d'aixo
+  }
+  pre++;
+  if (pre > 0) {
+    pair<uint, uint> temp = recentConflictsOrdered[vecPos];
+    recentConflictsOrdered[vecPos] = recentConflictsOrdered[pre];
+    recentConflictsOrdered[pre] = temp;
+    litToConflictsVector[lit] = pre;
+  }
 }
 
 bool propagateGivesConflict ( ) {
@@ -122,7 +157,11 @@ bool propagateGivesConflict ( ) {
       //cout << " -> " ;
       //if (someLitTrue) cout << "true"; else cout << "false";
       //cout << ". Last undefined lit: " << lastLitUndef << endl;
-      if (not someLitTrue and numUndefs == 0) return true; // conflict! all lits false
+      if (not someLitTrue and numUndefs == 0) {
+        // conflict! all lits false
+        //updateRecentConflicts(abs(currLit));
+        return true;
+      }
       else if (not someLitTrue and numUndefs == 1) setLiteralToTrue(lastLitUndef);  
     }
   }
@@ -150,10 +189,14 @@ void backtrack(){
 
 // Heuristic for finding the next decision literal:
 int getNextDecisionLiteral(){
+  // for (uint i = 1; i <= numVars+1; ++i) {
+  //   int l = (int) recentConflictsOrdered[i].first;
+  //   if (model[l] == UNDEF) return l;
+  // }
   //return orderByInfluence[modelStack.size()+1];
   // returns most influent UNDEF vars, positively
   for (uint i = orderPositionOfNextLit; i <= numVars+1; ++i) 
-    if (model[orderByInfluence[i]] == UNDEF) return orderByInfluence[i];  
+    if (model[orderByInfluence[i]] == UNDEF) return orderByInfluence[i]; 
   return 0; // reurns 0 when all literals are defined
 
 }
@@ -198,7 +241,7 @@ int main(){
     if (clauses[i].size() == 1) {
       int lit = clauses[i][0];
       int val = currentValueInModel(lit);
-      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; printStats(); return 10;}
+      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; /*printStats();*/ return 10;}
       else if (val == UNDEF) setLiteralToTrue(lit);
   }
   //for (uint i = 0; i < orderByInfluence.size(); ++i) cout << orderByInfluence[i] << " ";
@@ -206,12 +249,12 @@ int main(){
   // DPLL algorithm
   while (true) {
     while ( propagateGivesConflict() ) {
-      if (decisionLevel == 0) { cout << "UNSATISFIABLE" << endl; printStats(); return 10; }
+      if (decisionLevel == 0) { cout << "UNSATISFIABLE" << endl; /*printStats();*/ return 10; }
       backtrack();
     }
     int decisionLit = getNextDecisionLiteral();
-    ++decisions;
-    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" << endl; printStats(); return 20; }
+    ++decisions; ++decisionsSinceLastRefresh;
+    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" << endl;/* printStats(); */return 20; }
     // start new decision level:
     modelStack.push_back(0);  // push mark indicating new DL
     ++indexOfNextLitToPropagate;
