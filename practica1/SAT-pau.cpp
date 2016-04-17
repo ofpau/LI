@@ -20,8 +20,8 @@ uint indexOfNextLitToPropagate;
 uint decisionLevel;
 uint propagations, decisions;
 uint orderPositionOfNextLit;
-vector<vector<int> > clausesWhereVarIsPos;
-vector<vector<int> > clausesWhereVarIsNeg;
+vector<vector<vector<int> > > clausesWhereVarIs;
+//vector<vector<int> > clausesWhereVarIsNeg;
 vector<int> orderByInfluence;  // could be vector<uint>
 uint CONFLICTS_REFRESH_DELAY = 10000;
 uint conflictsSinceLastRefresh = 0;
@@ -38,8 +38,8 @@ clock_t tStart;
 bool influenceOrderFunction(int a, int b) {
   // TODO: don't call size(), store the size
   //     in the element 0 of the vector
-  return clausesWhereVarIsPos[a].size()+clausesWhereVarIsNeg[a].size() >
-         clausesWhereVarIsPos[b].size()+clausesWhereVarIsNeg[b].size();
+  return clausesWhereVarIs[a][TRUE].size()+clausesWhereVarIs[a][FALSE].size() >
+         clausesWhereVarIs[b][TRUE].size()+clausesWhereVarIs[b][FALSE].size();
 }
 
 void readClauses( ){
@@ -53,8 +53,8 @@ void readClauses( ){
   string aux;
   cin >> aux >> numVars >> numClauses;
   clauses.resize(numClauses);  
-  clausesWhereVarIsPos.resize(numVars+1, vector<int>(0));
-  clausesWhereVarIsNeg.resize(numVars+1, vector<int>(0));
+  clausesWhereVarIs.resize(numVars+1, vector<vector<int> > (2, vector<int> (0)));
+  //clausesWhereVarIsNeg.resize(numVars+1, vector<int>(0));
   orderByInfluence.resize(numVars+1, 0);
   recentConflictsOrdered.resize(numVars+1);
 
@@ -72,8 +72,8 @@ void readClauses( ){
           ++j;
         }
         clauses[i].push_back(lit);
-        if (lit > 0) clausesWhereVarIsPos[lit].push_back(i);
-        else clausesWhereVarIsNeg[-lit].push_back(i);
+        if (lit > 0) clausesWhereVarIs[lit][TRUE].push_back(i);
+        else clausesWhereVarIs[-lit][FALSE].push_back(i);
     }
   }
   // for (int i = 1; i < numVars+1; ++i) {
@@ -134,9 +134,9 @@ bool propagateGivesConflict ( ) {
     ++indexOfNextLitToPropagate;
     ++propagations;
 
-    vector<int>* clausesToPropagate = &clausesWhereVarIsPos[abs(currLit)];
+    vector<int>* clausesToPropagate = &clausesWhereVarIs[abs(currLit)][TRUE];
     if (currentValueInModel(abs(currLit)) == TRUE) {
-      clausesToPropagate = &clausesWhereVarIsNeg[abs(currLit)];
+      clausesToPropagate = &clausesWhereVarIs[abs(currLit)][FALSE];
     //  cout << " = true, " ;
     } //else cout << " = false, ";
     //cout << "to " << clausesToPropagate.size() << " clauses." << endl;
