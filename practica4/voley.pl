@@ -1,3 +1,5 @@
+%% voley.pl
+
 :-dynamic(varNumber/3).
 symbolicOutput(0). % set to 1 to see symbolic output only; 0 otherwise.
 
@@ -35,10 +37,25 @@ tvMatch(S-T):- tvTeams(TV), member(S,TV), member(T,TV), S\=T.
 % home-S-R       meaning  "team S plays at home on round R"
 % double-S-R     meaning  "team S has a double on round R"
 
-
 writeClauses:- 
     defineHome,
-    ...
+    atMostOneDouble,
+    oneMatchPerRoundAndTeam,
+    noDoublesOnCertainRounds
+    %% oneEncounterPerPair,
+    %%...
+    .
+
+atMostOneDouble:- team(T), findall(double-T-R, round(R), Lits), atMost(1, Lits), fail.
+atMostOneDouble.
+
+oneMatchPerRoundAndTeam:- team(T), round(R), findall(match-A-B-R, matchOfT(T, A-B), Lits), exactly(1, Lits), fail.
+oneMatchPerRoundAndTeam.
+
+noDoublesOnCertainRounds:- member(R, RestrictedRounds), noDoubles(RestrictedRounds), findall(match-_-_-R, round(R), Lits), exactly(0, Lits).
+noDoublesOnCertainRounds.
+
+%% oneEncounterPerPair.
 
 defineHome:- team(T), round(R), findall( match-T-S-R, matchOfT(T,T-S), Lits ), expressOr( home-T-R, Lits ), fail.
 defineHome.
