@@ -184,12 +184,12 @@ inline void checkmodel(){
 }
 
 void printStats() {
-  cout << ". ";
   double timeSpent = (double) (clock() - tStart)/CLOCKS_PER_SEC;
-  cout << "time: " << timeSpent << endl;
-  cout << "dec: " << decisions 
-        << ",\t prop: " << propagations 
-        << ",\t prop/s: " << propagations/timeSpent << endl;
+  //cout << "timeSpent" << "\t" << "\t" << "decisions" << "\t" << "propagations" 
+  //      << "\t" << "propagations/timeSpent" << endl;
+  cout << " " << timeSpent << " " << decisions << " " << propagations 
+        << " " << propagations/timeSpent << endl;
+        
 }
 
 int main(){ 
@@ -207,19 +207,19 @@ int main(){
     if (clauses[i].size() == 1) {
       int lit = clauses[i][0];
       int val = currentValueInModel(lit);
-      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; printStats(); return 10;}
+      if (val == FALSE) {cout << "UNSATISFIABLE" ; printStats(); return 10;}
       else if (val == UNDEF) setLiteralToTrue(lit);
   }
   
   // DPLL algorithm
   while (true) {
     while ( propagateGivesConflict() ) {
-      if (decisionLevel == 0) { cout << "UNSATISFIABLE" << endl; printStats(); return 10; }
+      if (decisionLevel == 0) { cout << "UNSATISFIABLE" ; printStats(); return 10; }
       backtrack();
     }
     int decisionLit = getNextDecisionLiteral();
     ++decisions; ++decisionsSinceLastRefresh;
-    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" << endl; printStats(); return 20; }
+    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" ; printStats(); return 20; }
     // start new decision level:
     modelStack.push_back(0);  // push mark indicating new DL
     ++indexOfNextLitToPropagate;

@@ -1,11 +1,7 @@
 #!/bin/bash
 
-make p2
-echo -   mine new:
-time mysat < random3SAT/vars-$1.cnf
-
 make pau-sat
-echo -   mine old:
+echo -   mine:
 time mysat < random3SAT/vars-$1.cnf
 
 echo -   resum.txt:

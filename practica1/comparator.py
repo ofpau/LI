@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import sys
+import re
 import os
 import time
 import subprocess
@@ -17,6 +18,8 @@ f = open(__OUTPUT_FILE, 'w')
 f.truncate()
 i = 0
 totalDiff = 0
+header = "timeSpent\tdecisions\tpropagations\tpropagations/timeSpent";
+print(header)
 for filename in os.listdir("./random3SAT"):
 	i += 1
 	var_num = int(filename.split("-")[1].split("-")[0])
@@ -26,7 +29,7 @@ for filename in os.listdir("./random3SAT"):
 	start_m = time.time()
 	process_m = subprocess.Popen("./mysat < random3SAT/{}".format(filename), stdout=subprocess.PIPE, shell=True)
 	output_m = (process_m.communicate()[0])[:-1]
-	output_m = output_m.split()[0]  #ignore printed stats
+	myresult = output_m.split("-")[0]  #ignore printed stats
 	end_m = time.time()
 
 	start_p = time.time()
@@ -35,7 +38,7 @@ for filename in os.listdir("./random3SAT"):
 	end_p = time.time()
 	mytime   = (end_m-start_m)
 	picotime = (end_p-start_p)
-	veredict = "  MATCH" if output_m == output_p else "DON'T MATCH"
+	veredict = "  MATCH" if myresult == output_p else "DON'T MATCH"
 	diff = (mytime/picotime)
 	totalDiff += diff
 	veredict += "(" + output_m[:3] + "). You're " + str(abs(diff))[:5] + " times " 
