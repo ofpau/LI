@@ -21,8 +21,7 @@ uint decisionLevel;
 uint propagations, decisions;
 uint orderPositionOfNextLit;
 vector<vector<vector<int> > > clausesWhereVarIs;
-vector<int> orderByInfluence;  // could be vector<uint>
-uint CONFLICTS_REFRESH_DELAY = 10000;
+uint CONFLICTS_REFRESH_DELAY = 5000;
 uint conflictsSinceLastRefresh = 0;
 uint decisionsSinceLastRefresh = 0;
 vector<uint> recentConflicts;
@@ -50,20 +49,12 @@ void readClauses( ){
   cin >> aux >> numVars >> numClauses;
   clauses.resize(numClauses);  
   clausesWhereVarIs.resize(numVars+1, vector<vector<int> > (2, vector<int> (1,0)));
-  orderByInfluence.resize(numVars+1, 0);
   recentConflicts.resize(numVars+1, 0);
 
-  uint j = 1;
   // Read clauses
   for (uint i = 0; i < numClauses; ++i) {
     int lit;
     while (cin >> lit and lit != 0) {
-        if (j <= numVars) {
-          // dirty way of avoiding a 
-          // new loop of numVars iterations.
-          orderByInfluence[j] = j;
-          ++j;
-        }
         clauses[i].push_back(lit);
         if (lit > 0) clausesWhereVarIs[lit][TRUE].push_back(i);
         else clausesWhereVarIs[-lit][FALSE].push_back(i);
@@ -73,7 +64,6 @@ void readClauses( ){
      clausesWhereVarIs[i][FALSE][0]   = clausesWhereVarIs[i][FALSE].size(); 
      clausesWhereVarIs[i][TRUE][0]    = clausesWhereVarIs[i][TRUE].size(); 
   }
-  sort(orderByInfluence.begin()+1, orderByInfluence.end(), influenceOrderFunction);
 }
 
 inline int currentValueInModel(int lit){
@@ -147,7 +137,7 @@ bool propagateGivesConflict ( ) {
   return false;
 }
 
-void backtrack(){
+inline void backtrack(){
   uint i = modelStack.size() -1;
   int lit = 0;
   while (modelStack[i] != 0){ // 0 is the DL mark
@@ -226,7 +216,6 @@ int main(){
       if (val == FALSE) {cout << "UNSATISFIABLE" << endl; /*printStats();*/ return 10;}
       else if (val == UNDEF) setLiteralToTrue(lit);
   }
-  //for (uint i = 0; i < orderByInfluence.size(); ++i) cout << orderByInfluence[i] << " ";
   
   // DPLL algorithm
   while (true) {
