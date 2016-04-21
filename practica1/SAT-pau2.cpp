@@ -22,11 +22,10 @@ uint propagations, decisions;
 uint orderPositionOfNextLit;
 vector<vector<vector<int> > > clausesWhereVarIs;
 vector<int> orderByInfluence;  // could be vector<uint>
-uint CONFLICTS_REFRESH_DELAY = 2000;
+uint CONFLICTS_REFRESH_DELAY = 10000;
 uint conflictsSinceLastRefresh = 0;
 uint decisionsSinceLastRefresh = 0;
-vector<pair<uint, uint> > recentConflictsOrdered;
-map<uint, uint> litToConflictsVector;
+vector<uint> recentConflicts;
 // clausesWhereVarIsPos[i][TRUE] contains
 // the clauses where i appears with value TRUE
 
@@ -35,8 +34,6 @@ const bool D = false;
 clock_t tStart;
 
 inline bool influenceOrderFunction(int a, int b) {
-  // TODO: don't call size(), store the size
-  //     in the element 0 of the vector
   return clausesWhereVarIs[a][TRUE][0]+clausesWhereVarIs[a][FALSE][0] >
          clausesWhereVarIs[b][TRUE][0]+clausesWhereVarIs[b][FALSE][0];
 }
@@ -53,9 +50,8 @@ void readClauses( ){
   cin >> aux >> numVars >> numClauses;
   clauses.resize(numClauses);  
   clausesWhereVarIs.resize(numVars+1, vector<vector<int> > (2, vector<int> (1,0)));
-  //clausesWhereVarIsNeg.resize(numVars+1, vector<int>(0));
   orderByInfluence.resize(numVars+1, 0);
-  recentConflictsOrdered.resize(numVars+1);
+  recentConflicts.resize(numVars+1, 0);
 
   uint j = 1;
   // Read clauses
@@ -63,11 +59,9 @@ void readClauses( ){
     int lit;
     while (cin >> lit and lit != 0) {
         if (j <= numVars) {
-          // (a bit dirty) way of avoiding a 
+          // dirty way of avoiding a 
           // new loop of numVars iterations.
           orderByInfluence[j] = j;
-          recentConflictsOrdered[j] = make_pair(j, 0);
-          litToConflictsVector[j] = j;
           ++j;
         }
         clauses[i].push_back(lit);
@@ -96,38 +90,18 @@ inline void setLiteralToTrue(int lit){
   else model[-lit] = FALSE;   
 }
 
-inline bool recentConflictsOrderFunction(pair<uint, uint> a, pair<uint, uint> b) {
-  return a.second > b.second;
-}
-
 inline void updateRecentConflicts(int lit) {
   if (decisionsSinceLastRefresh > CONFLICTS_REFRESH_DELAY) {
     int s = numVars+1;
-    sort(recentConflictsOrdered.begin()+1, recentConflictsOrdered.end(), recentConflictsOrderFunction);
     for (uint i = 0; i < s; ++i) {
-      if (D) cout << recentConflictsOrdered[i].first << " " << recentConflictsOrdered[i].second << ", ";
-      recentConflictsOrdered[i].second /= 2;
+      if (D) cout << i << " " << recentConflicts[i] << ", ";
+      recentConflicts[i] /= 2;
     }
-    //cout << ".done." << endl;
     conflictsSinceLastRefresh = 0;
     decisionsSinceLastRefresh = 0;
   }
   ++conflictsSinceLastRefresh;
-  uint vecPos = litToConflictsVector[lit];
-  //if (conflictsSinceLastRefresh%128 == 0) cout << "vecPos: " << vecPos << endl;
-  recentConflictsOrdered[vecPos].second += 20;
-  /*
-  int pre = vecPos-1;
-  while(pre > 0 and recentConflictsOrdered[vecPos].second > recentConflictsOrdered[pre].second) {
-    pre--; // Millor ordena cada cert temps en lloc d'aixo
-  }
-  pre++;
-  if (pre > 0) {
-    pair<uint, uint> temp = recentConflictsOrdered[vecPos];
-    recentConflictsOrdered[vecPos] = recentConflictsOrdered[pre];
-    recentConflictsOrdered[pre] = temp;
-    litToConflictsVector[lit] = pre;
-  }*/
+  recentConflicts[lit] += 10;
 }
 
 bool propagateGivesConflict ( ) {
@@ -192,21 +166,24 @@ void backtrack(){
 
 // Heuristic for finding the next decision literal:
 inline int getNextDecisionLiteral(){
-  /*
-  while(orderPositionOfNextLit <= numVars+1) {
-    int l = (int) recentConflictsOrdered[orderPositionOfNextLit++].first;
-    if (model[l] == UNDEF) return l;
-  }*/
-  //return orderByInfluence[modelStack.size()+1];
-  // returns most influent UNDEF vars, positively
-  while(orderPositionOfNextLit <= numVars+1) {
-    int nl = orderByInfluence[orderPositionOfNextLit++];
-    if (model[nl] == UNDEF) return nl; 
+  uint numMaxConflicts = 0;
+  uint maxScore = 0;
+  int litWithMaxConflicts = 0;
+  bool first = true;
+  for (uint i = 1; i < numVars+1; ++i) {
+    if (model[i] == UNDEF) {
+      uint currentVal = recentConflicts[i] + clausesWhereVarIs[i][TRUE][0] + clausesWhereVarIs[i][FALSE][0];
+      if (first or currentVal > maxScore) {
+        first = false;
+        maxScore = currentVal;
+        litWithMaxConflicts = i;
+      }
+    }
   }
-  return 0; // reurns 0 when all literals are defined
+  return litWithMaxConflicts;
 }
 
-void checkmodel(){
+inline void checkmodel(){
   for (int i = 0; i < numClauses; ++i){
     bool someTrue = false;
     for (int j = 0; not someTrue and j < LITS_PER_CLAUSE; ++j)

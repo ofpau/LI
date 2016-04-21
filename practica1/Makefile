@@ -1,7 +1,11 @@
 all: pau-sat
 
+
 pau-sat: SAT-pau.cpp
 	g++ -o mysat -O3 SAT-pau.cpp
+
+p2: SAT-pau2.cpp
+	g++ -o mysat -O3 SAT-pau2.cpp
 
 alum-sat: SAT-alumnes.cpp
 	g++ -o alum -O3 SAT-alumnes.cpp

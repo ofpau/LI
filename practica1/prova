@@ -1,7 +1,13 @@
 #!/bin/bash
-make pau-sat
-echo -   mine:
+
+make p2
+echo -   mine new:
 time mysat < random3SAT/vars-$1.cnf
+
+make pau-sat
+echo -   mine old:
+time mysat < random3SAT/vars-$1.cnf
+
 echo -   resum.txt:
 grep -C 4 $1 resum.txt
 
