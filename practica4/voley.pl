@@ -37,25 +37,54 @@ tvMatch(S-T):- tvTeams(TV), member(S,TV), member(T,TV), S\=T.
 % home-S-R       meaning  "team S plays at home on round R"
 % double-S-R     meaning  "team S has a double on round R"
 
-writeClauses:- 
-    defineHome,
-    atMostOneDouble,
-    oneMatchPerRoundAndTeam,
-    noDoublesOnCertainRounds
-    %% oneEncounterPerPair,
-    %%...
-    .
+writeClauses:-
+	defineHome,
+	oneMatchPerRoundAndTeam,
+	oneEncounterPerPair,
+	atMostOneDouble,
+    noDoublesOnCertainRounds,
+	defineDouble,
+    atMostOneTVMatch.
+
+atMostOneTVMatch:- round(R), findall(match-S-T-R, tvMatch(S-T), Lits), atMost(1, Lits), fail.
+atMostOneTVMatch.
 
 atMostOneDouble:- team(T), findall(double-T-R, round(R), Lits), atMost(1, Lits), fail.
 atMostOneDouble.
 
-oneMatchPerRoundAndTeam:- team(T), round(R), findall(match-A-B-R, matchOfT(T, A-B), Lits), exactly(1, Lits), fail.
+oneMatchPerRoundAndTeam:- 
+	team(T), round(R), 
+	findall(match-A-B-R, matchOfT(T, A-B), Lits),
+	exactly(1, Lits), 
+	fail.
 oneMatchPerRoundAndTeam.
 
-noDoublesOnCertainRounds:- member(R, RestrictedRounds), noDoubles(RestrictedRounds), findall(match-_-_-R, round(R), Lits), exactly(0, Lits).
+noDoublesOnCertainRounds:- 
+	noDoubles(RestrictedRounds),
+	member(R, RestrictedRounds), 
+	findall(double-T-R, team(T), Lits), 
+	exactly(0, Lits), 
+	fail.
 noDoublesOnCertainRounds.
 
-%% oneEncounterPerPair.
+oneEncounterPerPair:- 
+	team(T), matchOfT(T, T-S), 
+	findall(match-T-S-R1, round(R1), Lits1),
+	findall(match-S-T-R2, round(R2), Lits2),
+	append(Lits1, Lits2, Lits),
+	exactly(1, Lits),
+	fail.
+oneEncounterPerPair. 
+
+defineDouble:- 
+	team(T), round(R2),
+	R1 is R2-1, round(R1),
+	writeClause([home-T-R1, home-T-R2, double-T-R2]),
+	writeClause([home-T-R1, \+home-T-R2, \+double-T-R2]),
+	writeClause([\+home-T-R1, \+home-T-R2, double-T-R2]),
+	writeClause([\+home-T-R1, home-T-R2, \+double-T-R2]),
+	fail.
+defineDouble.
 
 defineHome:- team(T), round(R), findall( match-T-S-R, matchOfT(T,T-S), Lits ), expressOr( home-T-R, Lits ), fail.
 defineHome.
@@ -84,13 +113,13 @@ expressOr( Var, Lits ):- negate(Var,NVar), writeClause([ NVar | Lits ]),!.
 exactly(K,Lits):- atLeast(K,Lits), atMost(K,Lits),!.
 
 atMost(K,Lits):-   % l1+...+ln <= k:  in all subsets of size k+1, at least one is false:
-    negateAll(Lits,NLits), 
-    K1 is K+1,    subsetOfSize(K1,NLits,Clause), writeClause(Clause),fail.
+	negateAll(Lits,NLits), 
+	K1 is K+1,    subsetOfSize(K1,NLits,Clause), writeClause(Clause),fail.
 atMost(_,_).
 
 atLeast(K,Lits):-  % l1+...+ln >= k: in all subsets of size n-k+1, at least one is true:
-    length(Lits,N),
-    K1 is N-K+1,  subsetOfSize(K1, Lits,Clause), writeClause(Clause),fail.
+	length(Lits,N),
+	K1 is N-K+1,  subsetOfSize(K1, Lits,Clause), writeClause(Clause),fail.
 atLeast(_,_).
 
 negateAll( [], [] ).
@@ -108,7 +137,7 @@ subsetOfSize(N,[_|L],   S ):-            length(L,Leng), Leng>=N,  subsetOfSize(
 
 main:-  symbolicOutput(1), !, writeClauses, halt.   % print the clauses in symbolic form and halt
 main:-  initClauseGeneration,
-        tell(clauses), writeClauses, told,          % generate the (numeric) SAT clauses and call the solver
+		tell(clauses), writeClauses, told,          % generate the (numeric) SAT clauses and call the solver
 	tell(header),  writeHeader,  told,
 	numVars(N), numClauses(C),
 	write('Generated '), write(C), write(' clauses over '), write(N), write(' variables. '),nl,
@@ -121,11 +150,11 @@ treatResult(20):- write('Unsatisfiable'), nl, halt.
 treatResult(10):- write('Solution found: '), nl, see(model), symbolicModel(M), seen, displaySol(M), nl,nl,halt.
 
 initClauseGeneration:-  %initialize all info about variables and clauses:
-    retractall(numClauses(   _)), 
-    retractall(numVars(      _)), 
-    retractall(varNumber(_,_,_)),
-    assert(numClauses( 0 )), 
-    assert(numVars(    0 )),     !.
+	retractall(numClauses(   _)), 
+	retractall(numVars(      _)), 
+	retractall(varNumber(_,_,_)),
+	assert(numClauses( 0 )), 
+	assert(numVars(    0 )),     !.
 
 writeClause([]):- symbolicOutput(1),!, nl.
 writeClause([]):- countClause, write(0), nl.
