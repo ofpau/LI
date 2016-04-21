@@ -99,33 +99,25 @@ bool propagateGivesConflict ( ) {
   while ( indexOfNextLitToPropagate < modelStack.size() ) {
 
     int currLit = modelStack[indexOfNextLitToPropagate];
-    //cout << "Propagating " << abs(currLit);
     ++indexOfNextLitToPropagate;
     ++propagations;
 
     vector<int>* clausesToPropagate = &clausesWhereVarIs[abs(currLit)][TRUE];
     if (currentValueInModel(abs(currLit)) == TRUE) {
       clausesToPropagate = &clausesWhereVarIs[abs(currLit)][FALSE];
-    //  cout << " = true, " ;
-    } //else cout << " = false, ";
-    //cout << "to " << clausesToPropagate.size() << " clauses." << endl;
+    } 
     int s = clausesToPropagate->size();
     for (uint i = 1; i < s; ++i) {
       bool someLitTrue = false;
       int numUndefs = 0;
       int lastLitUndef = 0;
       vector<int>* clause = &clauses[(*clausesToPropagate)[i]];
-      //cout << "   Present in clause " << clause << ": ";
       
       for (uint k = 0; not someLitTrue and k < LITS_PER_CLAUSE; ++k) {
-       //cout << clauses[clause][k] << " ";
        int val = currentValueInModel((*clause)[k]);
        if (val == TRUE) someLitTrue = true;
        else if (val == UNDEF){ ++numUndefs; lastLitUndef = (*clause)[k]; }
       }
-      //cout << " -> " ;
-      //if (someLitTrue) cout << "true"; else cout << "false";
-      //cout << ". Last undefined lit: " << lastLitUndef << endl;
       if (not someLitTrue and numUndefs == 0) {
         // conflict! all lits false
         updateRecentConflicts(abs(currLit));
@@ -162,7 +154,11 @@ inline int getNextDecisionLiteral(){
   bool first = true;
   for (uint i = 1; i < numVars+1; ++i) {
     if (model[i] == UNDEF) {
-      uint currentVal = recentConflicts[i] + clausesWhereVarIs[i][TRUE][0] + clausesWhereVarIs[i][FALSE][0];
+      uint currentVal = recentConflicts[i] 
+						+ clausesWhereVarIs[i][TRUE][0] 
+						+ clausesWhereVarIs[i][FALSE][0];
+	  // Entre literales con un numero de conflictos recientes similar
+	  //  'desempatamos' con el numero de sus apariciones en clausulas 
       if (first or currentVal > maxScore) {
         first = false;
         maxScore = currentVal;
@@ -194,9 +190,7 @@ void printStats() {
   cout << "dec: " << decisions 
         << ",\t prop: " << propagations 
         << ",\t prop/s: " << propagations/timeSpent << endl;
-
 }
-
 
 int main(){ 
   readClauses(); // reads numVars, numClauses and clauses
@@ -213,19 +207,19 @@ int main(){
     if (clauses[i].size() == 1) {
       int lit = clauses[i][0];
       int val = currentValueInModel(lit);
-      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; /*printStats();*/ return 10;}
+      if (val == FALSE) {cout << "UNSATISFIABLE" << endl; printStats(); return 10;}
       else if (val == UNDEF) setLiteralToTrue(lit);
   }
   
   // DPLL algorithm
   while (true) {
     while ( propagateGivesConflict() ) {
-      if (decisionLevel == 0) { cout << "UNSATISFIABLE" << endl; /*printStats();*/ return 10; }
+      if (decisionLevel == 0) { cout << "UNSATISFIABLE" << endl; printStats(); return 10; }
       backtrack();
     }
     int decisionLit = getNextDecisionLiteral();
     ++decisions; ++decisionsSinceLastRefresh;
-    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" << endl;/* printStats(); */return 20; }
+    if (decisionLit == 0) { checkmodel(); cout << "SATISFIABLE" << endl; printStats(); return 20; }
     // start new decision level:
     modelStack.push_back(0);  // push mark indicating new DL
     ++indexOfNextLitToPropagate;
