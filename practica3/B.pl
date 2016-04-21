@@ -48,15 +48,11 @@ jump([AY, AX], [VY, VX], [BY, BX], E) :-
     BX is VX-1,
     \+member([BY, BX], E).
 
-% Donde es mejor 'generar' B? dentro de jump o en unSalto igual que BolaA i BolaV?
-% (En general es mejor 'ramear' el arbol de backtracking en niveles superiores?)
-
-unSalto(EA, []) :- length(EA, 1). %, write("done: "), write(EA).
+unSalto(EA, []) :- length(EA, 1). 
 unSalto(EA, [[BolaA, BolaV]|Saltos]) :-
     member(BolaA, EA),
     member(BolaV, EA),
     jump(BolaA, BolaV, BolaB, EA),
-    %write(BolaA), write(" jumps over "), write(BolaV), nl,
     delete(EA, BolaV, Eaux1),
     delete(Eaux1, BolaA, Eaux2),
     append(Eaux2, [BolaB], Enext),
