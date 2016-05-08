@@ -48,14 +48,14 @@ hour(H):-    between(1,5,H).
 % courseRoom-C-R     meaning "course C is given at room R"
 % late-D             meaning "there is some course at 13:00 on day D"
 
-writeClauses:- 
+writeClauses(M):- 
    eachCourse3Hours,
    noOverlapping,
    classInDifferentDays,
    oneRoomPerCourse,
    eachRoomAtMostOneClassAtTheSameTime,
    defineLate,
-   limitLateClasses.
+   limitLateClasses(M).
 
 eachCourse3Hours:- course(C), findall(courseHour-C-D-H, (day(D), hour(H)), Lits), exactly(3, Lits), fail.
 eachCourse3Hours.
@@ -74,8 +74,8 @@ eachRoomAtMostOneClassAtTheSameTime:-
 	writeClause([\+courseRoom-C-R, \+courseHour-C-D-H, \+courseRoom-C2-R, \+courseHour-C2-D-H]), fail.
 eachRoomAtMostOneClassAtTheSameTime.
 
-limitLateClasses:- maxNumberOfLateClasses(MAX), findall(late-D, day(D), Lits), atMost(MAX, Lits), fail.
-limitLateClasses.
+limitLateClasses(M):- findall(late-D, day(D), Lits), atMost(M, Lits), fail.
+limitLateClasses(_).
 
 defineLate:- day(D), findall(courseHour-C-D-H, (course(C), lateHour(H)), Lits), expressOr(late-D, Lits), fail.
 defineLate.
@@ -135,22 +135,30 @@ subsetOfSize(0,_,[]):-!.
 subsetOfSize(N,[X|L],[X|S]):- N1 is N-1, length(L,Leng), Leng>=N1, subsetOfSize(N1,L,S).
 subsetOfSize(N,[_|L],   S ):-            length(L,Leng), Leng>=N,  subsetOfSize( N,L,S).
 
-
 %%%%%% main:
 
 main:-  symbolicOutput(1), !, writeClauses, halt.   % print the clauses in symbolic form and halt
-main:-  initClauseGeneration,
-        tell(clauses), writeClauses, told,          % generate the (numeric) SAT clauses and call the solver
-	tell(header),  writeHeader,  told,
-	numVars(N), numClauses(C),
-	write('Generated '), write(C), write(' clauses over '), write(N), write(' variables. '),nl,
-	shell('cat header clauses > infile.cnf',_),
-	write('Calling solver....'), nl, 
-	shell('picosat -v -o model infile.cnf', Result),  % if sat: Result=10; if unsat: Result=20.
-	treatResult(Result),!.
+main:-  run(5), write('in main again, unsat'), halt.
 
-treatResult(20):- write('Unsatisfiable'), nl, halt.
-treatResult(10):- write('Solution found: '), nl, see(model), symbolicModel(M), seen, displaySol(M), nl,nl,halt.
+run(MAX):- 
+    initClauseGeneration,
+    write('gonna try with '), write(MAX), nl, 
+    tell(clauses), writeClauses(MAX), told,          % generate the (numeric) SAT clauses and call the solver
+	  tell(header),  writeHeader,  told,
+	  numVars(N), numClauses(C),
+    write('Generated '), write(C), write(' clauses over '), write(N), write(' variables. '),nl,
+    shell('cat header clauses > infile.cnf',_),
+    write('Calling solver.... '), nl, 
+    shell('picosat -v -o model infile.cnf', Result),  % if sat: Result=10; if unsat: Result=20.
+    treatResult(Result, MAX), !.
+
+treatResult(20, MAX):- write('Unsatisfiable with '), write(MAX), write(' "late days".'),  nl.
+treatResult(10, MAX):- write('Solution found with '), write(MAX), write(' "late days".'), nl,
+  %%see(model), symbolicModel(M), seen, displaySol(M), 
+  NEWMAX is MAX-1, run(NEWMAX),
+  nl, write('The solution found with minimum "late days" has '), write(MAX), 
+  write(' days with class(es) at 13h: '), nl, see(model),
+  symbolicModel(M), seen, displaySol(M), !.
 
 initClauseGeneration:-  %initialize all info about variables and clauses:
     retractall(numClauses(   _)), 
