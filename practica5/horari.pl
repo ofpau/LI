@@ -50,6 +50,7 @@ hour(H):-    between(1,5,H).
 
 writeClauses(M):- 
    eachCourse3Hours,
+   eachStudentAtMost3HoursPerDay,
    noOverlapping,
    classInDifferentDays,
    oneRoomPerCourse,
@@ -59,6 +60,9 @@ writeClauses(M):-
 
 eachCourse3Hours:- course(C), findall(courseHour-C-D-H, (day(D), hour(H)), Lits), exactly(3, Lits), fail.
 eachCourse3Hours.
+
+eachStudentAtMost3HoursPerDay:- day(D), student(_, L), findall(courseHour-C-D-H, (hour(H), member(C, L)), Lits), atMost(3, Lits), fail.
+eachStudentAtMost3HoursPerDay.
 
 noOverlapping:- student(_, L), day(D), hour(H), findall(courseHour-C-D-H, (course(C), member(C, L)), Lits), atMost(1, Lits), fail.
 noOverlapping.
@@ -142,7 +146,7 @@ main:-  run(5), write('in main again, unsat'), halt.
 
 run(MAX):- 
     initClauseGeneration,
-    write('gonna try with '), write(MAX), nl, 
+    nl, write('Searching solution with '), write(MAX), write(' "late days"...'), nl, 
     tell(clauses), writeClauses(MAX), told,          % generate the (numeric) SAT clauses and call the solver
 	  tell(header),  writeHeader,  told,
 	  numVars(N), numClauses(C),
@@ -154,7 +158,8 @@ run(MAX):-
 
 treatResult(20, MAX):- write('Unsatisfiable with '), write(MAX), write(' "late days".'),  nl.
 treatResult(10, MAX):- write('Solution found with '), write(MAX), write(' "late days".'), nl,
-  %%see(model), symbolicModel(M), seen, displaySol(M), 
+  %% Uncomment to see the generated solution:
+  %% see(model), symbolicModel(M), seen, displaySol(M), 
   NEWMAX is MAX-1, run(NEWMAX),
   nl, write('The solution found with minimum "late days" has '), write(MAX), 
   write(' days with class(es) at 13h: '), nl, see(model),
